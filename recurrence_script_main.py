@@ -14,6 +14,7 @@ from sys import stdout
 import os.path
 import subprocess
 import regex as re
+import json
 start_time = time.time()
 seed_number=12
 random.seed(seed_number)
@@ -114,19 +115,56 @@ tmp_folder=output_folder+"/temp_dir"
 if not os.path.exists(tmp_folder):
 	os.makedirs(tmp_folder)
 
+def process_input_file(cmd, in_file, out_file, in_file2=None):
 
+	#if (in_file2):
+	#	print("[{0}] -> [{2}]".format(in_file, in_file2, out_file))
+	#	print("[{1}] -> [{2}]".format(in_file, in_file2, out_file))
+	#else:
+	#	print("[{0}] -> [{1}]".format(in_file, out_file))
+	#return
+
+	if (in_file2):
+		print("Preparing {2} from {0} and {1}".format(in_file, in_file2, out_file))
+		cmd_prepared = cmd.format(in_file=in_file, in_file2=in_file2, out_file=out_file)
+	else:
+		print("Preparing {1} from {0}".format(in_file, out_file))
+		cmd_prepared = cmd.format(in_file=in_file, out_file=out_file)
+	if os.path.isfile(out_file):
+		print("   File {0} already exists, skipping".format(out_file))
+	else:
+		print("   "+ cmd_prepared)
+		subprocess.call(cmd_prepared, shell=True)
+	return 0
 
 # Create a BED file of the merged exons, and introns, for each lncRNA gene.
 
 
 if not os.path.isfile("table_kmer_counts.txt"):
-	subprocess.call("cat "+whole_genome+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{split($10,array,\".\")}{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > exons_n2.bed', shell=True)
-	subprocess.call("mergeBed -i exons_n2.bed -c 4,6 -o distinct | awk \'{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}\'> merged_exons_n2.bed", shell=True)
-	subprocess.call("cat "+gtf_file+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{split($10,array,\".\")}{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > exons_n.bed', shell=True)
-	subprocess.call("mergeBed -i exons_n.bed -c 4,6 -o distinct | awk \'{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}\'> merged_exons_n.bed", shell=True)
-	subprocess.call("cat "+gtf_file+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{split($10,array,\".\")}{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > genes_n.bed', shell=True)
-	subprocess.call("cat "+whole_genome+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{split($10,array,\".\")}{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > genes_n2.bed', shell=True)
+	process_input_file(cmd='cat {in_file} | tr -d \; | tr -d \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{{split($10,array,\".\")}}{{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > {out_file}',
+				   in_file=whole_genome, out_file="exons_n2.bed")
+
+	#subprocess.call("cat "+whole_genome+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{split($10,array,\".\")}{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > exons_n2.bed', shell=True)
 	
+	process_input_file(cmd="mergeBed -i {in_file} -c 4,6 -o distinct | awk \'{{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}}\'> {out_file}",
+				in_file="exons_n2.bed", out_file="merged_exons_n2.bed")
+	#subprocess.call("mergeBed -i exons_n2.bed -c 4,6 -o distinct | awk \'{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}\'> merged_exons_n2.bed", shell=True)
+
+	process_input_file('cat {in_file} | tr -d \; | tr -d \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{{split($10,array,\".\")}}{{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > {out_file}',
+				in_file=gtf_file, out_file="exons_n.bed")
+	#subprocess.call("cat "+gtf_file+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"exon\"\' | awk \'{split($10,array,\".\")}{print $10\"\t\"$4-1\"\t\"$5\"\t\"$1\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > exons_n.bed', shell=True)
+	process_input_file("mergeBed -i {in_file} -c 4,6 -o distinct | awk \'{{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}}\'> {out_file}",
+				in_file="exons_n.bed", out_file="merged_exons_n.bed")
+	#subprocess.call("mergeBed -i exons_n.bed -c 4,6 -o distinct | awk \'{print $4\"\t\"$2\"\t\"$3\"\t\"$1\"\t.\t\"$5}\'> merged_exons_n.bed", shell=True)
+
+	process_input_file('cat {in_file} | tr -d \; | tr -d \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{{split($10,array,\".\")}}{{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > {out_file}',
+					in_file=gtf_file, out_file="genes_n.bed")
+	#subprocess.call("cat "+gtf_file+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{split($10,array,\".\")}{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > genes_n.bed', shell=True)
+
+	process_input_file('cat {in_file} | tr -d \; | tr -d \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{{split($10,array,\".\")}}{{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > {out_file}',
+		in_file=whole_genome, out_file="genes_n2.bed")
+	#subprocess.call("cat "+whole_genome+' | tr --delete \; | tr --delete \\" | grep -v \\# | grep -v chrM | awk \'$3==\"gene\"\' | awk \'{split($10,array,\".\")}{print $1\"\t\"$4-1\"\t\"$5\"\t\"$10\"\t.\t\"$7}\' | sort -T ' + tmp_folder + ' -k1,1 -k2,2n > genes_n2.bed', shell=True)
+
 	if exc_regions!="NO":
 		#subprocess.call("subtractBed -a genes_n2.bed -b "+exc_regions+" > genes_n2_clean.bed", shell=True)
 		subprocess.call("subtractBed -a merged_exons_n2.bed -b "+exc_regions+" > merged_exons_n2_clean.bed", shell=True)
@@ -138,7 +176,7 @@ if not os.path.isfile("table_kmer_counts.txt"):
 		subprocess.call("mv merged_exons_n_clean.bed merged_exons_n.bed", shell=True)
 		subprocess.call("subtractBed -a "+chr_sizes_long+" -b "+exc_regions+" > chr_sizes_long_clean.bed", shell=True)
 		chr_sizes_long="chr_sizes_long_clean.bed"
-	
+
 	if reg_regions=="YES":
 	
 		# Create promoters
@@ -181,11 +219,19 @@ if not os.path.isfile("table_kmer_counts.txt"):
 
 	#background
 	
-	subprocess.call("bedtools slop -i genes_n.bed -g "+chr_sizes+" -b "+background_size+" > genes_extended_n.bed", shell=True)
-	
+	process_input_file("bedtools slop -i {in_file} -g "+chr_sizes+" -b "+background_size+" > {out_file}",
+				in_file="genes_n.bed", out_file="genes_extended_n.bed")
+	#subprocess.call("bedtools slop -i genes_n.bed -g "+chr_sizes+" -b "+background_size+" > genes_extended_n.bed", shell=True)
+
 	# Get non-extended introns of genes
-	subprocess.call("subtractBed -a genes_n.bed -b merged_exons_n.bed > introns_n.bed", shell=True)
-	subprocess.call("subtractBed -a introns_n.bed -b merged_exons_n2.bed > introns_n2.bed", shell=True)
+	process_input_file(cmd="subtractBed -a {in_file} -b {in_file2} > {out_file}",
+				in_file="genes_n.bed", in_file2="merged_exons_n.bed", out_file="introns_n.bed")
+	#subprocess.call("subtractBed -a genes_n.bed -b merged_exons_n.bed > introns_n.bed", shell=True)
+
+	process_input_file(cmd="subtractBed -a {in_file} -b {in_file2} > {out_file}",
+				in_file="introns_n.bed", in_file2="merged_exons_n2.bed", out_file="introns_n2.bed")
+	#subprocess.call("subtractBed -a introns_n.bed -b merged_exons_n2.bed > introns_n2.bed", shell=True)
+
 	if exc_regions!="NO":
 		subprocess.call("subtractBed -a introns_n2.bed -b "+exc_regions+" > introns_n2_clean.bed", shell=True)	
 		subprocess.call("mv introns_n2_clean.bed introns_n2.bed", shell=True)
@@ -200,7 +246,7 @@ if not os.path.isfile("table_kmer_counts.txt"):
 		if gene not in intronic_regions_dir2:
 			intronic_regions_dir2[gene]=str(strand)
 	file.close()
-	
+
 	intronic_regions_file=open("introns_n2.bed","r")
 
 	for line in intronic_regions_file:
@@ -215,9 +261,15 @@ if not os.path.isfile("table_kmer_counts.txt"):
 			intronic_regions_dir2[gene]=str(strand)
 		intronic_regions_dir[gene]+=length
 	intronic_regions_file.close()	
+
+	process_input_file(cmd="subtractBed -a {in_file} -b {in_file2} > {out_file}",
+				in_file=chr_sizes_long, in_file2="merged_exons_n.bed", out_file="chr_sizes_n.bed")
+	#subprocess.call("subtractBed -a "+chr_sizes_long+" -b merged_exons_n.bed > chr_sizes_n.bed", shell=True)
 	
-	subprocess.call("subtractBed -a "+chr_sizes_long+" -b merged_exons_n.bed > chr_sizes_n.bed", shell=True)
-	subprocess.call("subtractBed -a chr_sizes_n.bed -b merged_exons_n2.bed > chr_sizes_n2.bed", shell=True)
+	process_input_file(cmd="subtractBed -a {in_file} -b {in_file2} > {out_file}",
+				in_file="chr_sizes_n.bed", in_file2="merged_exons_n2.bed", out_file="chr_sizes_n2.bed")
+	#subprocess.call("subtractBed -a chr_sizes_n.bed -b merged_exons_n2.bed > chr_sizes_n2.bed", shell=True)
+
 	if exc_regions!="NO":
 		subprocess.call("subtractBed -a chr_sizes_n2.bed -b "+exc_regions+" > chr_sizes_n2_clean.bed", shell=True)	
 		subprocess.call("mv chr_sizes_n2_clean.bed chr_sizes_n2.bed", shell=True)
@@ -274,27 +326,54 @@ if not os.path.isfile("table_kmer_counts.txt"):
 			background_file.write(line_to_print)
 			i+=1
 	background_file.close()
-						
-	subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n introns_n2.bed > introns.bed', shell=True)
-	subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n exons_n.bed > exons.bed', shell=True)
-	subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n merged_exons_n.bed > merged_exons.bed', shell=True)
-	subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n genes_extended_n.bed > genes.bed', shell=True)
+
+	process_input_file(cmd='sort -T ' + tmp_folder + ' -k 1,1 -k2,2n {in_file} > {out_file}',
+				in_file="introns_n2.bed", out_file="introns.bed")
+	#subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n introns_n2.bed > introns.bed', shell=True)
+
+	process_input_file(cmd='sort -T ' + tmp_folder + ' -k 1,1 -k2,2n {in_file} > {out_file}',
+				in_file="exons_n.bed", out_file="exons.bed")
+	#subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n exons_n.bed > exons.bed', shell=True)
+
+	process_input_file(cmd='sort -T ' + tmp_folder + ' -k 1,1 -k2,2n {in_file} > {out_file}',
+				in_file="merged_exons_n.bed", out_file="merged_exons.bed")
+	#subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n merged_exons_n.bed > merged_exons.bed', shell=True)
+	process_input_file(cmd='sort -T ' + tmp_folder + ' -k 1,1 -k2,2n {in_file} > {out_file}',
+				in_file="genes_extended_n.bed", out_file="genes.bed")
+	#subprocess.call('sort -T ' + tmp_folder + ' -k 1,1 -k2,2n genes_extended_n.bed > genes.bed', shell=True)
 	print("\tBED files created for merged exons and introns: %.0f seconds " % (time.time() - start_time))
 
 	# Count mutation in merged exons and introns
 
-	subprocess.call('intersectBed -a merged_exons.bed -b '+input_file+' -sorted -wb | awk \'{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}\' > merged_exons_mutations.bed', shell=True)
-	subprocess.call('intersectBed -a introns.bed -b '+input_file+' -sorted -wb | awk \'{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}\' > introns_mutations.bed', shell=True)
+	process_input_file(cmd='intersectBed -a {in_file} -b {in_file2} -sorted -wb | awk \'{{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}}\' > {out_file}',
+				in_file="merged_exons.bed", in_file2=input_file, out_file="merged_exons_mutations.bed")
+	#subprocess.call('intersectBed -a merged_exons.bed -b '+input_file+' -sorted -wb | awk \'{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}\' > merged_exons_mutations.bed', shell=True)
+
+	process_input_file(cmd='intersectBed -a {in_file} -b {in_file2} -sorted -wb | awk \'{{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}}\' >{out_file}',
+				in_file="introns.bed",in_file2=input_file, out_file="introns_mutations.bed")
+
+	#subprocess.call('intersectBed -a introns.bed -b '+input_file+' -sorted -wb | awk \'{print $1"\t"$2-1"\t"$3+1"\t"$4"\t"$5"\t"$6}\' > introns_mutations.bed', shell=True)
+
 	print("\tMutations counted in merged exons mutations and introns: %.0f seconds " % (time.time() - start_time))
 
 
 	# Get fasta for merged exons mutations and introns mutations
 
 
-	subprocess.call("sed 's/chr//g' merged_exons_mutations.bed > merged_exons_mutations_for_fasta.bed", shell=True)
-	subprocess.call("sed 's/chr//g' introns_mutations.bed > introns_mutations_for_fasta.bed", shell=True)
-	subprocess.call(' bedtools getfasta -fi '+fasta_file+' -bed merged_exons_mutations_for_fasta.bed -fo merged_exons_mutations.fa -name -s', shell=True)
-	subprocess.call(' bedtools getfasta -fi '+fasta_file+' -bed introns_mutations_for_fasta.bed -fo introns_mutations.fa -name -s', shell=True)
+	process_input_file(cmd="sed 's/chr//g' {in_file} > {out_file}",
+				in_file="merged_exons_mutations.bed", out_file="merged_exons_mutations_for_fasta.bed")
+	#subprocess.call("sed 's/chr//g' merged_exons_mutations.bed > merged_exons_mutations_for_fasta.bed", shell=True)
+	process_input_file(cmd="sed 's/chr//g' {in_file} > {out_file}",
+				in_file="introns_mutations.bed", out_file="introns_mutations_for_fasta.bed")
+	#subprocess.call("sed 's/chr//g' introns_mutations.bed > introns_mutations_for_fasta.bed", shell=True)
+	process_input_file(cmd='bedtools getfasta -fi {in_file} -bed {in_file2} -fo {out_file} -name -s',
+				in_file=fasta_file, in_file2="merged_exons_mutations_for_fasta.bed", out_file="merged_exons_mutations.fa")
+	#subprocess.call(' bedtools getfasta -fi '+fasta_file+' -bed merged_exons_mutations_for_fasta.bed -fo merged_exons_mutations.fa -name -s', shell=True)
+
+	process_input_file('bedtools getfasta -fi {in_file} -bed {in_file2} -fo {out_file} -name -s',
+				in_file=fasta_file, in_file2="introns_mutations_for_fasta.bed", out_file="introns_mutations.fa")
+
+	#subprocess.call(' bedtools getfasta -fi '+fasta_file+' -bed introns_mutations_for_fasta.bed -fo introns_mutations.fa -name -s', shell=True)
 	print("\tFasta created for merged exons mutations and introns mutations: %.0f seconds " % (time.time() - start_time))
 
 
@@ -385,22 +464,44 @@ if not os.path.isfile("table_kmer_counts.txt"):
 
 	if not os.path.isfile(output_folder+"/exonic_kmers.txt"):
 		if not os.path.isfile(output_folder+"/intronic_kmers.txt"):
-			subprocess.call("bedtools slop -i merged_exons.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > merged_exons_for_fasta2.bed", shell=True)
-			subprocess.call("bedtools slop -i introns.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > introns_for_fasta2.bed", shell=True)
-			subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed merged_exons_for_fasta2.bed -fo merged_exons.fa -name -s', shell=True)
-			subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed introns_for_fasta2.bed -fo introns.fa -name -s', shell=True)
-			pool = mp.Pool(processes=cores)
+			process_input_file(cmd="bedtools slop -i {in_file} -g {in_file2} -b 1 | sed 's/chr//g' > {out_file}",
+				   in_file="merged_exons.bed", in_file2=chr_sizes, out_file="merged_exons_for_fasta2.bed")
+
+			#subprocess.call("bedtools slop -i merged_exons.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > merged_exons_for_fasta2.bed", shell=True)
+
+			process_input_file(cmd="bedtools slop -i {in_file} -g {in_file2} -b 1 | sed 's/chr//g' > {out_file}",
+				  in_file="introns.bed", in_file2=chr_sizes, out_file="introns_for_fasta2.bed")
+			#subprocess.call("bedtools slop -i introns.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > introns_for_fasta2.bed", shell=True)
+
+			process_input_file(cmd='bedtools getfasta -fi {in_file} -bed {in_file2} -fo {out_file} -name -s',
+				  in_file=fasta_file, in_file2="merged_exons_for_fasta2.bed", out_file="merged_exons.fa")
+			#subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed merged_exons_for_fasta2.bed -fo merged_exons.fa -name -s', shell=True)
+
+			process_input_file(cmd='bedtools getfasta -fi {in_file} -bed {in_file2} -fo  {out_file} -name -s',
+				  in_file=fasta_file, in_file2="introns_for_fasta2.bed", out_file="introns.fa")
+			#subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed introns_for_fasta2.bed -fo introns.fa -name -s', shell=True)
+			pool = mp.Pool(processes=4)
 			results = pool.map(count_kmers, [["introns.fa",kmers,2],["merged_exons.fa",kmers,1],["merged_exons_mutations.fa",kmers,3],["introns_mutations.fa",kmers,4]])
 		else:
-			subprocess.call("bedtools slop -i merged_exons.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > merged_exons_for_fasta2.bed", shell=True)
-			subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed merged_exons_for_fasta2.bed -fo merged_exons.fa -name -s', shell=True)
+			process_input_file(cmd="bedtools slop -i {in_file} -g {in_file2} -b 1 | sed 's/chr//g' >{out_file}",
+				  in_file="merged_exons.bed", in_file2=chr_sizes, out_file="merged_exons_for_fasta2.bed")
+			#subprocess.call("bedtools slop -i merged_exons.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > merged_exons_for_fasta2.bed", shell=True)
+
+			process_input_file(cmd='bedtools getfasta -fi {in_file} -bed {in_file2} -fo {out_file} -name -s',
+				  in_file=fasta_file, in_file2="merged_exons_for_fasta2.bed", out_file="merged_exons.fa")
+			#subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed merged_exons_for_fasta2.bed -fo merged_exons.fa -name -s', shell=True)
 			pool = mp.Pool(processes=cores)
 			results = pool.map(count_kmers, [["merged_exons.fa",kmers,1],["merged_exons_mutations.fa",kmers,3],["introns_mutations.fa",kmers,4]])
 			introns=read_kmers(output_folder+"/intronic_kmers.txt")
 	else:
 		if not os.path.isfile(output_folder+"/intronic_kmers.txt"):
-			subprocess.call("bedtools slop -i introns.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > introns_for_fasta2.bed", shell=True)
-			subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed introns_for_fasta2.bed -fo introns.fa -name -s', shell=True)
+			process_input_file(cmd="bedtools slop -i {in_file} -g {in_file2} -b 1 | sed 's/chr//g' > {out_file}",
+				  in_file="introns.bed", in_file2=chr_sizes, out_file="introns_for_fasta2.bed")
+			#subprocess.call("bedtools slop -i introns.bed -g "+chr_sizes+" -b 1 | sed 's/chr//g' > introns_for_fasta2.bed", shell=True)
+
+			process_input_file(cmd='bedtools getfasta -fi {in_file} -bed {in_file2} -fo {out_file} -name -s',
+				  in_file=fasta_file, in_file2="introns_for_fasta2.bed", out_file="introns.fa")
+			#subprocess.call('bedtools getfasta -fi '+fasta_file+' -bed introns_for_fasta2.bed -fo introns.fa -name -s', shell=True)
 			pool = mp.Pool(processes=cores)
 			results = pool.map(count_kmers, [["introns.fa",kmers,2],["merged_exons_mutations.fa",kmers,3],["introns_mutations.fa",kmers,4]])
 			exons=read_kmers(output_folder+"/exonic_kmers.txt")
