@@ -19,6 +19,15 @@ seed_number=12
 random.seed(seed_number)
 numpy.random.seed(seed_number)
 
+def create_chunks_from_list(input_list, num_chunks):
+	chunk, rem = divmod(len(input_list), num_chunks)
+	chunks= numpy.multiply([s for s in range(0, num_chunks+1)],chunk)
+	chunks[num_chunks] += rem
+	result = []
+	for n in range(0,num_chunks):
+		result.append(input_list[chunks[n]:chunks[n+1]])
+	return result
+
 if len(sys.argv)==1 or "-h" in sys.argv: 
 	print("Mandatory arguments: -i <--input_file> -o <--output_folder> -f <--fasta_file> -g <--gtf_file> -t <--true_set> -k <--kmers_file> -z <--chr_sizes> -y <--chr_sizes_long> -w <--whole_genome>")
 	print("Optional arguments: -b <--background_size> -s <--simulations> -c <--cores> -r <--reg_regions> -e <--exc_regions>")
@@ -517,63 +526,67 @@ if not os.path.isfile('table_probabilities_R.txt'):
 
 	# Define funcitons to simulate
 	# this function has been optimized from original ExInAtor algorithm to make sure that it adapts to increasing size of WGS tumour cohorts
-	def simulate(list2):
+	def simulate(list3):
 		numpy.random.seed(seed_number)
+		lines_to_print  = []
 		atime = time.time()
-		gene, list2 = list2[0], list2[1]
 
-		def generate_data():
-			for lst in list2:
-				yield lst[1], lst[2], lst[3]
+		for list2 in list3:
+			gene, list2 = list2[0], list2[1]
 
-		results = numpy.zeros(simulations)
-		for tot_mut, tot_len, ex_len in generate_data():
-			#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
-			ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
-			results += ex_simulated_count
+			def generate_data():
+				for lst in list2:
+					yield lst[1], lst[2], lst[3]
 
-		value1 = numpy.sum(results >= real_exonic_mutations[gene])
-		pval = value1 / float(simulations)
-
-		if pval <= 0.1:
 			results = numpy.zeros(simulations)
 			for tot_mut, tot_len, ex_len in generate_data():
 				#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
 				ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
 				results += ex_simulated_count
 
-			value2 = numpy.sum(results >= real_exonic_mutations[gene]) + value1
-			pval = value2 / float(simulations * 2)
+			value1 = numpy.sum(results >= real_exonic_mutations[gene])
+			pval = value1 / float(simulations)
 
-		if pval <= 0.01:
-			for i in range(100):
+			if pval <= 0.1:
 				results = numpy.zeros(simulations)
 				for tot_mut, tot_len, ex_len in generate_data():
 					#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
 					ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
 					results += ex_simulated_count
 
-				value2 += numpy.sum(results >= real_exonic_mutations[gene])
+				value2 = numpy.sum(results >= real_exonic_mutations[gene]) + value1
+				pval = value2 / float(simulations * 2)
 
-			value3 = value2
-			pval = value3 / float(simulations * 102)
+			if pval <= 0.01:
+				for i in range(100):
+					results = numpy.zeros(simulations)
+					for tot_mut, tot_len, ex_len in generate_data():
+						#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
+						ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
+						results += ex_simulated_count
 
-		if pval <= 0.001:
-			for i in range(10000):
-				results = numpy.zeros(simulations)
-				for tot_mut, tot_len, ex_len in generate_data():
-					#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
-					ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
-					results += ex_simulated_count
+					value2 += numpy.sum(results >= real_exonic_mutations[gene])
 
-				value2 += numpy.sum(results >= real_exonic_mutations[gene])
+				value3 = value2
+				pval = value3 / float(simulations * 102)
 
-			value3 = value2
-			pval = value3 / float(simulations * 10102)
+			if pval <= 0.001:
+				for i in range(10000):
+					results = numpy.zeros(simulations)
+					for tot_mut, tot_len, ex_len in generate_data():
+						#axx = numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))
+						ex_simulated_count = numpy.sum(((numpy.random.randint(1, tot_len + 1, (simulations, tot_mut))) <= ex_len), axis=1)
+						results += ex_simulated_count
 
-		line_to_print = gene + "\t" + str(real_exonic_mutations[gene]) + "\t" + str(pval) + "\n"
-		#print(line_to_print)
-		return line_to_print
+					value2 += numpy.sum(results >= real_exonic_mutations[gene])
+
+				value3 = value2
+				pval = value3 / float(simulations * 10102)
+
+			line_to_print = gene + "\t" + str(real_exonic_mutations[gene]) + "\t" + str(pval) + "\n"
+			#print(line_to_print)
+		lines_to_print.append(line_to_print)
+		return lines_to_print
 
 
 
@@ -597,9 +610,13 @@ if not os.path.isfile('table_probabilities_R.txt'):
 	start_time = time.time()
 	file2=open("table_probabilities_R.txt","w")
 	pool = mp.Pool(processes=cores)
+	chunked_input = create_chunks_from_list(input_file, cores * 5)
+	results = pool.map(simulate, chunked_input)
+
 	results = pool.map(simulate, input_file)
-	for element in results:
-		file2.write(element)
+	for result in results:
+		for element in result:
+			file2.write(element)
 	print("\tSimulation finished: %.0f seconds " % (time.time() - start_time))                                                                                            
 	results=None
 	file2.close()
