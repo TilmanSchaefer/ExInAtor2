@@ -515,88 +515,100 @@ if not os.path.isfile('table_probabilities_R.txt'):
 	# Define funcitons to simulate
 
 
-	def f2(list):
-		tot_mut=list[0]
-		tot_len=list[1]
-		ex_len=list[2]
-		axx=numpy.random.randint(1,tot_len+1,tot_mut).tolist()
-		ex_simulated_count= len([x for x in range(len(axx)) if axx[x] <= ex_len])
-		return ex_simulated_count
 	def simulate(list2):
 		numpy.random.seed(seed_number)
 		atime=time.time()
 		sets=0
 		gene=list2[0]
 		list2=list2[1]
-		results=[0] * simulations
-		for list in list2:
-			motif=list[0]
-			tot_mut=list[1]
-			tot_len=list[2]
-			ex_len=list[3]
+		#profiler = Profiler()
+		#profiler.start()
+		#print("List2: ", list2)
+		results=numpy.zeros(simulations)
+		for mlist in list2:
+			motif=mlist[0]
+			tot_mut=mlist[1]
+			tot_len=mlist[2]
+			ex_len=mlist[3]
 			result=[]
-			list=[[tot_mut,tot_len,ex_len]]*simulations
-			result=map(f2,list)
-			results=[x + y for x, y in zip(results, result)]
+			#sim_list=[[tot_mut,tot_len,ex_len]]*simulations
+			result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
+			#if verbose:
+			#	print(list(result))
+			results += result
+			#results=[x + y for x, y in zip(results, result)]
 		simulated_exonic_mutations=results
-		value1=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
+		value1 = numpy.sum(results >= real_exonic_mutations[gene])
+		#value1=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
 		del simulated_exonic_mutations
 		pval=(value1)/float(simulations)
 		if pval<=0.1:
 			sets+=1
-			results=[0] * simulations
-			for list in list2:
-				motif=list[0]
-				tot_mut=list[1]
-				tot_len=list[2]
-				ex_len=list[3]
+			results=numpy.zeros(simulations)
+			for mlist in list2:
+				motif=mlist[0]
+				tot_mut=mlist[1]
+				tot_len=mlist[2]
+				ex_len=mlist[3]
 				result=[]
-				list=[[tot_mut,tot_len,ex_len]]*simulations
-				result=map(f2,list)
-				results=[x + y for x, y in zip(results, result)]
+				result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
+				if verbose:
+					print(list(result))
+				results += result
+				#results=[x + y for x, y in zip(results, result)]
 			simulated_exonic_mutations=results
-			value2=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])+value1
+			value2 = numpy.sum(results >= real_exonic_mutations[gene]) + value1
+			#value2=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])+value1
 			del simulated_exonic_mutations
 			pval=(value2)/float(simulations*2)
 		if pval<=0.01:
 			sets+=1
-			for i in range(10):
-				results=[0] * simulations*10
-				for list in list2:
-					motif=list[0]
-					tot_mut=list[1]
-					tot_len=list[2]
-					ex_len=list[3]
+			for i in range(1):
+				results=numpy.zeros(simulations*100)
+				for mlist in list2:
+					motif=mlist[0]
+					tot_mut=mlist[1]
+					tot_len=mlist[2]
+					ex_len=mlist[3]
 					result=[]
-					list=[[tot_mut,tot_len,ex_len]]*simulations*10
-					result=map(f2,list)
-					results=[x + y for x, y in zip(results, result)]
+					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations*100)
+					#if verbose:
+					#	print(list(result))
+					results += result
+					#results=[x + y for x, y in zip(results, result)]
 				simulated_exonic_mutations=results
-				value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
+				value2 += numpy.sum(results >= real_exonic_mutations[gene])
+				#value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
 				del simulated_exonic_mutations
 			value3=value2
 			pval=(value3)/float(simulations*102)
 		if pval<=0.001:
 			sets+=1
-			for i in range(100):
-				results=[0] * simulations*100
-				for list in list2:
-					motif=list[0]
-					tot_mut=list[1]
-					tot_len=list[2]
-					ex_len=list[3]
+			for i in range(10000):
+				results=numpy.zeros(simulations)
+				for mlist in list2:
+					motif=mlist[0]
+					tot_mut=mlist[1]
+					tot_len=mlist[2]
+					ex_len=mlist[3]
 					result=[]
-					list=[[tot_mut,tot_len,ex_len]]*simulations*100
-					result=map(f2,list)
-					results=[x + y for x, y in zip(results, result)]
+					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
+					#if verbose:
+					#	print(list(result))
+					results += result
+					#results=[x + y for x, y in zip(results, result)]
 				simulated_exonic_mutations=results
-				value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
+				value2 += numpy.sum(results >= real_exonic_mutations[gene])
+				#value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
 				del simulated_exonic_mutations
 			value3=value2
 			pval=(value3)/float(simulations*10102)
 		line_to_print=gene+"\t"+str(real_exonic_mutations[gene])+"\t"+str(pval)+"\n"
 		#if sets>1: print(gene, sets, time.time()-atime, len(list2), pval)
+		#profiler.stop()
+		#profiler.print()  
 		return(line_to_print)
+
 
 	# Start simulation
 	def simulated_second_round(a):
