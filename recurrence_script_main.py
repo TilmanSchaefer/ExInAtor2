@@ -528,14 +528,15 @@ if not os.path.isfile('table_probabilities_R.txt'):
 		numpy.random.seed(seed_number)
 		lines_to_print=[]
 		atime=time.time()
-		sets=0
-		gene=list2[0]
-		list2=list2[1]
+
 		#profiler = Profiler()
 		#profiler.start()
 		#print("List2: ", list2)
 		results=numpy.zeros(simulations)
 		for list2 in list3:
+			sets=0
+			gene=list2[0]
+			list2=list2[1]
 			for mlist in list2:
 				motif=mlist[0]
 				tot_mut=mlist[1]
