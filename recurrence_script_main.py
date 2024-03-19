@@ -525,15 +525,15 @@ if not os.path.isfile('table_probabilities_R.txt'):
 
 
 	def simulate(list3):
-		numpy.random.seed(seed_number)
 		lines_to_print=[]
 		atime=time.time()
 
 		#profiler = Profiler()
 		#profiler.start()
 		#print("List2: ", list2)
-		results=numpy.zeros(simulations)
 		for list2 in list3:
+			numpy.random.seed(seed_number)
+			results=numpy.zeros(simulations)
 			sets=0
 			gene=list2[0]
 			list2=list2[1]
@@ -573,7 +573,28 @@ if not os.path.isfile('table_probabilities_R.txt'):
 				pval=(value2)/float(simulations*2)
 			if pval<=0.01:
 				sets+=1
-				for i in range(1):
+				for i in range(10):
+					results=numpy.zeros(simulations*10)
+					for mlist in list2:
+						motif=mlist[0]
+						tot_mut=mlist[1]
+						tot_len=mlist[2]
+						ex_len=mlist[3]
+						result=[]
+						result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations*10)
+						#if verbose:
+						#	print(list(result))
+						results += result
+						#results=[x + y for x, y in zip(results, result)]
+					simulated_exonic_mutations=results
+					value2 += numpy.sum(results >= real_exonic_mutations[gene])
+					#value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
+					del simulated_exonic_mutations
+				value3=value2
+				pval=(value3)/float(simulations*102)
+			if pval<=0.001:
+				sets+=1
+				for i in range(100):
 					results=numpy.zeros(simulations*100)
 					for mlist in list2:
 						motif=mlist[0]
@@ -591,30 +612,9 @@ if not os.path.isfile('table_probabilities_R.txt'):
 					#value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
 					del simulated_exonic_mutations
 				value3=value2
-				pval=(value3)/float(simulations*102)
-			if pval<=0.001:
-				sets+=1
-				for i in range(10000):
-					results=numpy.zeros(simulations)
-					for mlist in list2:
-						motif=mlist[0]
-						tot_mut=mlist[1]
-						tot_len=mlist[2]
-						ex_len=mlist[3]
-						result=[]
-						result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
-						#if verbose:
-						#	print(list(result))
-						results += result
-						#results=[x + y for x, y in zip(results, result)]
-					simulated_exonic_mutations=results
-					value2 += numpy.sum(results >= real_exonic_mutations[gene])
-					#value2+=len([i for i in simulated_exonic_mutations if i >= real_exonic_mutations[gene]])
-					del simulated_exonic_mutations
-				value3=value2
 				pval=(value3)/float(simulations*10102)
 			line_to_print=gene+"\t"+str(real_exonic_mutations[gene])+"\t"+str(pval)+"\n"
-		lines_to_print.append(line_to_print)
+			lines_to_print.append(line_to_print)
 		#if sets>1: print(gene, sets, time.time()-atime, len(list2), pval)
 		#profiler.stop()
 		#profiler.print()  
@@ -641,7 +641,7 @@ if not os.path.isfile('table_probabilities_R.txt'):
 	start_time = time.time()
 	file2=open("table_probabilities_R.txt","w")
 	pool = mp.Pool(processes=cores)
-	chunked_input = create_chunks_from_list(input_file, cores * 5)
+	chunked_input = create_chunks_from_list(input_file, 113)
 	results = pool.map(simulate, chunked_input)
 	for result in results:
 		for element in result:
