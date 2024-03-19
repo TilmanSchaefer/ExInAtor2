@@ -585,7 +585,7 @@ if not os.path.isfile('table_probabilities_R.txt'):
 
 			line_to_print = gene + "\t" + str(real_exonic_mutations[gene]) + "\t" + str(pval) + "\n"
 			#print(line_to_print)
-		lines_to_print.append(line_to_print)
+			lines_to_print.append(line_to_print)
 		return lines_to_print
 
 
@@ -610,10 +610,9 @@ if not os.path.isfile('table_probabilities_R.txt'):
 	start_time = time.time()
 	file2=open("table_probabilities_R.txt","w")
 	pool = mp.Pool(processes=cores)
-	chunked_input = create_chunks_from_list(input_file, cores * 5)
+	chunked_input = create_chunks_from_list(input_file, cores * 20)
 	results = pool.map(simulate, chunked_input)
 
-	results = pool.map(simulate, input_file)
 	for result in results:
 		for element in result:
 			file2.write(element)
