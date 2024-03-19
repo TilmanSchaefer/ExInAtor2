@@ -552,8 +552,8 @@ if not os.path.isfile('table_probabilities_R.txt'):
 				ex_len=mlist[3]
 				result=[]
 				result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
-				if verbose:
-					print(list(result))
+				#if verbose:
+				##	print(list(result))
 				results += result
 				#results=[x + y for x, y in zip(results, result)]
 			simulated_exonic_mutations=results
@@ -563,15 +563,15 @@ if not os.path.isfile('table_probabilities_R.txt'):
 			pval=(value2)/float(simulations*2)
 		if pval<=0.01:
 			sets+=1
-			for i in range(1):
-				results=numpy.zeros(simulations*100)
+			for i in range(10):
+				results=numpy.zeros(simulations*10)
 				for mlist in list2:
 					motif=mlist[0]
 					tot_mut=mlist[1]
 					tot_len=mlist[2]
 					ex_len=mlist[3]
 					result=[]
-					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations*100)
+					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations*10)
 					#if verbose:
 					#	print(list(result))
 					results += result
@@ -584,15 +584,15 @@ if not os.path.isfile('table_probabilities_R.txt'):
 			pval=(value3)/float(simulations*102)
 		if pval<=0.001:
 			sets+=1
-			for i in range(10000):
-				results=numpy.zeros(simulations)
+			for i in range(100):
+				results=numpy.zeros(simulations*100)
 				for mlist in list2:
 					motif=mlist[0]
 					tot_mut=mlist[1]
 					tot_len=mlist[2]
 					ex_len=mlist[3]
 					result=[]
-					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations)
+					result = numpy.random.binomial(tot_mut, ex_len/(tot_len+1), simulations*100)
 					#if verbose:
 					#	print(list(result))
 					results += result
