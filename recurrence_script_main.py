@@ -527,11 +527,11 @@ if not os.path.isfile('table_probabilities_R.txt'):
 	# Define funcitons to simulate
 	# this function has been optimized from original ExInAtor algorithm to make sure that it adapts to increasing size of WGS tumour cohorts
 	def simulate(list3):
-		numpy.random.seed(seed_number)
 		lines_to_print  = []
 		atime = time.time()
 
 		for list2 in list3:
+			numpy.random.seed(seed_number)
 			gene, list2 = list2[0], list2[1]
 
 			def generate_data():
